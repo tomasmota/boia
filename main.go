@@ -1,16 +1,12 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
 
 const (
 	PeerPort   = "3838"
 	ClientPort = "3839"
 )
 
-// func applyLogs(log *Log, sm *StateMachine) {
-// }
 func main() {
 	log := NewLog()
 	sm := NewStateMachine()
@@ -27,10 +23,4 @@ func main() {
 	log.Entries[0].Command.Apply(sm)
 
 	fmt.Println(sm.state["abc"])
-
-	// s := NewServer(ServerConfig{
-	// 	PeerPort:   PeerPort,
-	// 	ClientPort: ClientPort,
-	// })
-	// log.Fatal(s.Start())
 }

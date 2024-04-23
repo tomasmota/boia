@@ -1,6 +1,8 @@
 package main
 
-import "sync"
+import (
+	"sync"
+)
 
 // LogEntryType describes various types of log entries.
 type LogEntryType uint8
@@ -41,8 +43,8 @@ type LogEntry struct {
 
 func NewLog() *Log {
 	return &Log{
-		Entries:     make([]LogEntry, 1000),
-		CommitIndex: 0,
+		Entries:     make([]LogEntry, 0, 1000),
+		CommitIndex: -1,
 	}
 }
 
