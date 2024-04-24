@@ -9,8 +9,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type ServerState string
@@ -21,29 +19,32 @@ const (
 	Candidate ServerState = "Candidate"
 )
 
+type ServerId uint8
+
 type ServerConfig struct {
 	PeerPort   string
 	ClientPort string
 
+	Id            ServerId
 	PeerAddresses []string
 }
 
 type Server struct {
 	config ServerConfig
-	id     uuid.UUID
+	id     ServerId
 
 	clientLn *net.TCPListener
 	peerLn   *net.TCPListener
 
 	currentTerm int64
-	votedFor    uuid.UUID
+	votedFor    ServerId
 	state       ServerState
 }
 
 func NewServer(config ServerConfig) *Server {
 	return &Server{
 		config: config,
-		id:     uuid.New(),
+		id:     ServerId(config.Id),
 
 		// WARN: remove after testing client conn
 		state: Follower,

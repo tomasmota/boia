@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
-	"time"
 )
 
 const (
@@ -12,7 +10,6 @@ const (
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
 	log := NewLog()
 	sm := NewStateMachine()
 
