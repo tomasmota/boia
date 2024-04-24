@@ -15,6 +15,7 @@ const (
 	LogNoop
 )
 
+// TODO: persist the log on disk
 type Log struct {
 	mu      sync.RWMutex
 	Entries []LogEntry
@@ -43,7 +44,7 @@ type LogEntry struct {
 
 func NewLog() *Log {
 	return &Log{
-		Entries:     make([]LogEntry, 0, 1000),
+		Entries:     make([]LogEntry, 0),
 		CommitIndex: -1,
 	}
 }

@@ -1,7 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"log/slog"
+	"math/rand"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -17,14 +24,16 @@ const (
 type ServerConfig struct {
 	PeerPort   string
 	ClientPort string
+
+	PeerAddresses []string
 }
 
 type Server struct {
 	config ServerConfig
 	id     uuid.UUID
 
-	clientLn net.Listener
-	peerLn   net.Listener
+	clientLn *net.TCPListener
+	peerLn   *net.TCPListener
 
 	currentTerm int64
 	votedFor    uuid.UUID
@@ -37,38 +46,67 @@ func NewServer(config ServerConfig) *Server {
 		id:     uuid.New(),
 
 		// WARN: remove after testing client conn
-		state: Leader,
+		state: Follower,
 		// WARN: remove after testing client conn
 		currentTerm: 4,
 	}
 }
 
-// func (s *Server) Start() error {
-// 	pln, err := net.Listen("tcp", fmt.Sprintf(":%s", s.config.PeerPort))
-// 	if err != nil {
-// 		return fmt.Errorf("error creating peer listener: %w", err)
-// 	}
-// 	s.peerLn = pln
-// 	go s.peerLoop()
-//
-// 	cln, err := net.Listen("tcp", fmt.Sprintf(":%s", s.config.ClientPort))
-// 	if err != nil {
-// 		return fmt.Errorf("error creating client listener: %w", err)
-// 	}
-// 	s.clientLn = cln
-// 	go s.clientLoop()
-//
-// 	slog.Info("raft node started")
-// 	sigChan := make(chan os.Signal, 1)
-// 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-// 	<-sigChan
-//
-// 	slog.Info("Shutting down server...")
-// 	// TODO: do graceful shutdown
-//
-// 	return nil
-// }
-//
+func (s *Server) Start() error {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:"+s.config.PeerPort)
+	if err != nil {
+		return fmt.Errorf("error resolving tcp address: %w", err)
+	}
+	pln, err := net.ListenTCP("tcp", tcpAddr)
+	if err != nil {
+		return fmt.Errorf("error creating peer listener: %w", err)
+	}
+	s.peerLn = pln
+	go s.serverLoop()
+
+	// cln, err := net.Listen("tcp", fmt.Sprintf(":%s", s.config.ClientPort))
+	// if err != nil {
+	// 	return fmt.Errorf("error creating client listener: %w", err)
+	// }
+	// s.clientLn = cln
+	// go s.clientLoop()
+
+	slog.Info("raft node started")
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
+
+	slog.Info("Shutting down server...")
+	// TODO: do graceful shutdown
+
+	return nil
+}
+
+func (s *Server) serverLoop() error {
+	slog.Info("accepting peer connections", "port", s.peerLn.Addr())
+	for {
+		timeout := rand.Intn(150) + 150 // timeout between 150 and 300 ms
+		s.peerLn.SetDeadline(time.Now().Add(time.Duration(timeout) * time.Millisecond))
+		conn, err := s.peerLn.Accept()
+		if err != nil {
+			if net, ok := err.(net.Error); ok && net.Timeout() {
+				// TODO: we only want to timeout if we didnt receive AppendEntries, if we receive RequestVote timer should keep ticking
+				slog.Warn("timed out waiting for peer connection", "timeout", timeout)
+				continue
+			}
+			slog.Error("error accepting peer connection", "err", err)
+			continue
+		}
+
+		go s.handlePeerConn(conn)
+	}
+}
+
+func (s *Server) handlePeerConn(conn net.Conn) {
+	slog.Info("new peer connection", "address", conn.RemoteAddr())
+	conn.Write([]byte("Handshake and stuff"))
+}
+
 // func (s *Server) clientLoop() error {
 // 	slog.Info("accepting client connections", "port", s.clientLn.Addr())
 // 	for {
@@ -83,23 +121,8 @@ func NewServer(config ServerConfig) *Server {
 // 	}
 // }
 //
-// func (s *Server) peerLoop() error {
-// 	slog.Info("accepting peer connections", "port", s.peerLn.Addr())
-// 	for {
-// 		conn, err := s.peerLn.Accept()
-// 		if err != nil {
-// 			slog.Error("error accepting peer connection", "err", err)
-// 			continue
-// 		}
 //
-// 		go s.handlePeerConn(conn)
-// 	}
-// }
 //
-// func (s *Server) handlePeerConn(conn net.Conn) {
-// 	slog.Info("new peer connection", "address", conn.RemoteAddr())
-// 	conn.Write([]byte("Handshake and stuff"))
-// }
 //
 // type Command byte
 //

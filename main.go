@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
 
 const (
 	PeerPort   = "3838"
@@ -8,6 +12,7 @@ const (
 )
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
 	log := NewLog()
 	sm := NewStateMachine()
 
